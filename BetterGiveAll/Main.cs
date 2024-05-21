@@ -8,36 +8,32 @@ using System.Reflection;
 public class Main
 {
     public static Harmony HarmonyInstance;
-    public static MethodInfo IsIncludedInTakeAllOriginal;
-    public static MethodInfo IsIncludedInTakeAllPrefix;
-    public static MethodInfo GetMaxTransferrableToOriginal;
-    public static MethodInfo GetMaxTransferrableToPostfix;
-
 
     public static void Load()
     {
+        //Harmony.DEBUG = true;
         HarmonyInstance = new Harmony("shu307.bettergiveall");
 
-        var transferAllOriginal = AccessTools.Method(typeof(InfoPage), "TransferAll", new Type[] { typeof(InventoryBehaviour), typeof(InventoryBehaviour), typeof(bool), typeof(InputFrame) });
-        var transferAllPrefix = typeof(BetterGiveAllPatchers).GetMethod(nameof(BetterGiveAllPatchers.TransferAllPrefix));
-        var transferAllPostfix = typeof(BetterGiveAllPatchers).GetMethod(nameof(BetterGiveAllPatchers.TransferAllPostfix));
+        var originalInfoTransferAll = AccessTools.Method(typeof(InfoPage), "TransferAll", new Type[] { typeof(InventoryBehaviour), typeof(InventoryBehaviour), typeof(bool), typeof(InputFrame) });
+        var prefixInfoTransferAll = typeof(BetterGiveAllPatchers).GetMethod(nameof(BetterGiveAllPatchers.TransferAllPrefix));
+        var postfixInfoTransferAll = typeof(BetterGiveAllPatchers).GetMethod(nameof(BetterGiveAllPatchers.TransferAllPostfix));
 
-        IsIncludedInTakeAllOriginal = typeof(Equipment).GetMethod(nameof(Equipment.IsIncludedInTakeAll), new Type[] { typeof(TileObject) });
-        IsIncludedInTakeAllPrefix = typeof(BetterGiveAllPatchers).GetMethod(nameof(BetterGiveAllPatchers.IsIncludedInTakeAllPrefix));
+        var originalInfoIsIncludedInTakeAll = typeof(Equipment).GetMethod(nameof(Equipment.IsIncludedInTakeAll), new Type[] { typeof(TileObject) });
+        var prefixInfoIsIncludedInTakeAll = typeof(BetterGiveAllPatchers).GetMethod(nameof(BetterGiveAllPatchers.IsIncludedInTakeAllPrefix));
 
-        GetMaxTransferrableToOriginal = typeof(Equipment).GetMethod(nameof(Equipment.GetMaxTransferrableTo), new Type[] { typeof(TileObject) });
-        GetMaxTransferrableToPostfix = typeof(BetterGiveAllPatchers).GetMethod(nameof(BetterGiveAllPatchers.GetMaxTransferrableToPostfix));
+        var originalInfoGetMaxTransferrableTo = typeof(Equipment).GetMethod(nameof(Equipment.GetMaxTransferrableTo), new Type[] { typeof(TileObject) });
+        var postfixInfoGetMaxTransferrableTo = typeof(BetterGiveAllPatchers).GetMethod(nameof(BetterGiveAllPatchers.GetMaxTransferrableToPostfix));
 
-        HarmonyInstance.Patch(transferAllOriginal, prefix: new HarmonyMethod(transferAllPrefix), postfix: new HarmonyMethod(transferAllPostfix));
+        HarmonyInstance.Patch(originalInfoTransferAll, prefix: new HarmonyMethod(prefixInfoTransferAll), postfix: new HarmonyMethod(postfixInfoTransferAll));
+        HarmonyInstance.Patch(originalInfoIsIncludedInTakeAll, prefix: new HarmonyMethod(prefixInfoIsIncludedInTakeAll));
+        HarmonyInstance.Patch(originalInfoGetMaxTransferrableTo, postfix: new HarmonyMethod(postfixInfoGetMaxTransferrableTo));
+
 
     }
     public static void Unload()
     {
         HarmonyInstance?.UnpatchAll();
     }
-
-
-
 
 }
 
