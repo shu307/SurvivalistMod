@@ -43,10 +43,7 @@ static class BetterGiveAllPatchers
     }
     public static void TransferAllPostfix()
     {
-        if (isGivingAll)
-        {
-            isGivingAll = false;
-        }
+        isGivingAll = false;
     }
 
 
