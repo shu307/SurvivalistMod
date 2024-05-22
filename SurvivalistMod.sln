@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoTentInCamp", "NoTentInCam
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetterGiveAll", "BetterGiveAll\BetterGiveAll.csproj", "{461709E8-F0F7-4DC0-ABA6-3BA17A77DB55}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IWantTrader", "IWantTrader\IWantTrader.csproj", "{4C9E3C00-A2C9-48BF-A341-B6805EAE9A24}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{461709E8-F0F7-4DC0-ABA6-3BA17A77DB55}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{461709E8-F0F7-4DC0-ABA6-3BA17A77DB55}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{461709E8-F0F7-4DC0-ABA6-3BA17A77DB55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C9E3C00-A2C9-48BF-A341-B6805EAE9A24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C9E3C00-A2C9-48BF-A341-B6805EAE9A24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C9E3C00-A2C9-48BF-A341-B6805EAE9A24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C9E3C00-A2C9-48BF-A341-B6805EAE9A24}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

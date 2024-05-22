@@ -1,12 +1,17 @@
-﻿using System;
+﻿using HarmonyLib;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection.Emit;
+using UnityEngine;
 
 
 static class BetterGiveAllPatchers
 {
-    //static int debugCount;
+#if DEBUG
+    static int debugCount;
+#endif
     static bool isGivingAll = false;
-
     static bool isMatchingPolicy = false;
 
     static int cachedLevel = -1;
@@ -16,18 +21,21 @@ static class BetterGiveAllPatchers
     static Dictionary<LiquidPrototype, float> foundLiquidAmountPairs = new Dictionary<LiquidPrototype, float>();
     static Dictionary<EquipmentPrototype, int> foundEquipmentAmountPairs = new Dictionary<EquipmentPrototype, int>();
 
-    static Dictionary<EquipmentPrototype, int> wantGiveCombinableAmountPairs = new Dictionary<EquipmentPrototype, int>();
+    // should be initialized for every item
+    static int cachedWantGiveAmount = 0;
 
     public static void TransferAllPrefix(InventoryBehaviour fromInventory)
     {
+        isGivingAll = false;
+
         if (fromInventory.Carrier is Character character && Session.Instance.GetPlayerControllingCharacter(character) != null)
         {
-            isGivingAll = true;
-
-            //debugCount++;
-            //FileLog.Log(debugCount.ToString());
-
+#if DEBUG
+            debugCount++;
+            FileLog.Log(debugCount.ToString());
+#endif
             // initialize
+            isGivingAll = true;
             isMatchingPolicy = !InputFunctionManager.Instance.IsPressed(InputFunction.CommandModeFastScroll, false, 0);
 
             cachedLevel = -1;
@@ -36,29 +44,19 @@ static class BetterGiveAllPatchers
             foundStrengthBonus = 0;
             foundLiquidAmountPairs.Clear();
             foundEquipmentAmountPairs.Clear();
-
-            wantGiveCombinableAmountPairs.Clear();
-
         }
     }
-    public static void TransferAllPostfix()
+
+    static bool NewIsIncludedInTakeAll(Equipment equipment, TileObject carrier)
     {
-        isGivingAll = false;
-    }
-
-
-    public static bool IsIncludedInTakeAllPrefix(ref bool __result, Equipment __instance, TileObject carrier)
-    {
-
-        var shouldCallOriginal = true;
-
         if (!isGivingAll)
         {
-            return shouldCallOriginal;
+            return equipment.IsIncludedInTakeAll(carrier);
         }
 
+        cachedWantGiveAmount = 0;
+
         var character = (Character)carrier;
-        var equipment = __instance;
         var equipmentType = equipment.GetPrototype();
         var liquidType = equipment.GetLiquidContentsType();
 
@@ -107,13 +105,13 @@ static class BetterGiveAllPatchers
             amountToKeep = (liquidType != null) ? equipment.GetLiquidContentsAmount() : 1f;
         }
 
-
-
         // get max one as targetAmount if is matching policy
         if (isMatchingPolicy)
         {
             amountToKeep = Math.Max(amountToKeep, character.GetTargetAmountToCarryIncludingAmmo(equipmentType, liquidType, equipment.InfectedWith));
         }
+
+        var shouldCallOriginal = true;
 
         if (amountToKeep > 0f)
         {
@@ -123,7 +121,6 @@ static class BetterGiveAllPatchers
                 // keep this, allow overflow
                 if (foundAmountExceptThis < amountToKeep)
                 {
-                    __result = false;
                     shouldCallOriginal = false;
                 }
                 // increase found amount with this amount
@@ -136,12 +133,11 @@ static class BetterGiveAllPatchers
                     if (equipment.GetAmount() > (int)amountToKeep)
                     {
                         // cache want give amount
-                        wantGiveCombinableAmountPairs[equipmentType] = equipment.GetAmount() - (int)amountToKeep;
+                        cachedWantGiveAmount = equipment.GetAmount() - (int)amountToKeep;
                     }
                     else
                     {
                         // less than target, give none
-                        __result = false;
                         shouldCallOriginal = false;
                     }
                 }
@@ -151,7 +147,6 @@ static class BetterGiveAllPatchers
                     var foundAmountExceptThis = foundEquipmentAmountPairs.ContainsKey(equipmentType) ? foundEquipmentAmountPairs[equipmentType] : 0;
                     if (foundAmountExceptThis < (int)amountToKeep)
                     {
-                        __result = false;
                         shouldCallOriginal = false;
                     }
                     // increase found amount
@@ -161,22 +156,41 @@ static class BetterGiveAllPatchers
 
         }
 
-        return shouldCallOriginal;
+        return shouldCallOriginal ? equipment.IsIncludedInTakeAll(carrier) : false;
     }
 
-    public static void GetMaxTransferrableToPostfix(ref int __result, Equipment __instance)
+    static int NewGetAmount(Equipment equipment)
     {
-        if (!isGivingAll)
+        return (isGivingAll && cachedWantGiveAmount > 0) ? Math.Min(cachedWantGiveAmount, equipment.GetAmount()) : equipment.GetAmount();
+    }
+
+    public static IEnumerable<CodeInstruction> TransferAllTranspiler(IEnumerable<CodeInstruction> instructions)
+    {
+        var foundGetAmountIndex = -1;
+        var foundIsIncludedInTakeAllIndex = -1;
+
+        var codes = new List<CodeInstruction>(instructions);
+        for (var i = 0; i < codes.Count; i++)
         {
-            return;
+            if (codes[i].Calls(AccessTools.Method(typeof(Equipment), nameof(Equipment.GetAmount))))
+            {
+                foundGetAmountIndex = i;
+                codes[i] = new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(BetterGiveAllPatchers), nameof(NewGetAmount)));
+
+            }
+            else if (codes[i].Calls(AccessTools.Method(typeof(Equipment), nameof(Equipment.IsIncludedInTakeAll), new Type[] { typeof(TileObject) })))
+            {
+                foundIsIncludedInTakeAllIndex = i;
+                codes[i] = new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(BetterGiveAllPatchers), nameof(NewIsIncludedInTakeAll)));
+            }
         }
 
-        var equipmentType = __instance.GetPrototype();
+        Debug.Assert(foundGetAmountIndex > -1 && foundIsIncludedInTakeAllIndex > -1);
+#if DEBUG
+        FileLog.Log($"foundGetAmountIndex: {foundGetAmountIndex}, foundIsIncludedInTakeAllIndex: {foundIsIncludedInTakeAllIndex}");
+#endif
 
-        if (wantGiveCombinableAmountPairs.ContainsKey(equipmentType))
-        {
-            __result = Math.Min(__result, wantGiveCombinableAmountPairs[equipmentType]);
-        }
+        return codes.AsEnumerable();
     }
 
 
